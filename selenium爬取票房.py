@@ -10,27 +10,9 @@ from yz_solve import yz_solve
 from fontTools.ttLib import TTFont
 from parseFont import identify_word
 from encodeStr import convert_html
+from saveFont import save_font
 
 
-def save_font():
-    try:
-        font_link = re.findall(r'//s3plus.meituan.net/v1/mss_73a511b8f91f43d0bdae92584ea6330b/font/\w+\.woff', html_source)[0]
-    except IndexError:
-        raise '未找到字体'
-    # print('link:', font_link)
-    font_name = font_link.split('/')[-1]
-    # print('name:', font_name)
-    if os.path.exists('fonts/'+font_name):
-        print(f'{font_name}字体已存在,跳过保存')
-        return font_name
-    font_link = 'https:' + font_link
-    font_file=requests.get(font_link).content
-    with open('fonts/'+font_name, 'wb') as f:
-        f.write(font_file)
-    font=TTFont('fonts/'+font_name)
-    font.saveXML('./xml/'+font_name[:-5]+'.xml')
-    font.save('./ttf/'+font_name[:-5]+'.ttf')
-    return font_name
 
 if __name__ == '__main__':
 
@@ -47,8 +29,11 @@ if __name__ == '__main__':
     })
     driver.implicitly_wait(10)
     driver.maximize_window()
+    try_num=1
     while True:
+        print(f'第{try_num}次尝试请求页面')
         html_source=driver.page_source
+        print('当前页面:',html_source)
         if '猫眼验证中心' in html_source:
             iframe=driver.find_element(By.CSS_SELECTOR,'#tcaptcha_iframe')
             driver.switch_to.frame(iframe)
@@ -56,17 +41,14 @@ if __name__ == '__main__':
             time.sleep(5)
             print(driver.current_url)
             print(len(driver.window_handles))
+            try_num+=1
         else:
             print('验证通过')
-            op=input()
-            if op=='1':
-                break
-            else:
-                driver.refresh()
+            break
 
-    html_source=driver.page_source
     font_name=save_font()
-    dict_list=identify_word('./ttf/'+font_name[:-5]+'.ttf')
+    print('当前使用的字体:',font_name)
+    dict_list=identify_word('./ttf/'+font_name+'.ttf')
 
     box_offices=[]
     elem_box_offices=driver.find_elements(By.CSS_SELECTOR, '.stonefont')
